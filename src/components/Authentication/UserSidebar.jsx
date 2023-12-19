@@ -5,7 +5,10 @@ import SwipeableDrawer from '@material-ui/core/SwipeableDrawer';
 import { CryptoState } from '../../CryptoContext';
 import { Avatar, Button } from '@material-ui/core';
 import { signOut } from 'firebase/auth';
-import { auth } from '../../firebase';
+import { auth, db } from '../../firebase';
+import { numberWithCommas } from '../CoinsTable';
+import { AiFillDelete } from 'react-icons/ai';
+import { doc, setDoc } from 'firebase/firestore';
 
 const useStyles = makeStyles({
     container: {
@@ -48,6 +51,17 @@ const useStyles = makeStyles({
         alignItems: "center",
         gap: 12,
         overflowY: "scroll",
+    },
+    coin: {
+        padding: 10,
+        borderRadius: 5,
+        color: "black",
+        width: "100%",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        backgroundColor: "#EEBC1D",
+        boxShadow: "0 0 3px black"
     }
 });
 
@@ -57,7 +71,9 @@ export default function UserSidebar() {
         right: false,
     });
 
-    const { user, setAlert } = CryptoState();
+    const { user, setAlert, watchlist, coins, symbol } = CryptoState();
+    console.log(coins);
+    console.log(watchlist);
 
     const toggleDrawer = (anchor, open) => (event) => {
         if (event && event.type === 'keydown' && (event.key === 'Tab' || event.key === 'Shift')) {
@@ -77,6 +93,27 @@ export default function UserSidebar() {
         })
 
         toggleDrawer();
+    }
+
+    const removeFromWatchlist = async (coin) => {
+        const coinRef = doc(db, "watchlist", user.uid);
+        try {
+            await setDoc(coinRef, {
+                coins: watchlist.filter((watch) => watch !== coin?.id)
+            }, { merge: true })
+
+            setAlert({
+                open: true,
+                message: `${coin.name} Removed from the Watchlist!`,
+                type: 'success'
+            })
+        } catch (error) {
+            setAlert({
+                open: true,
+                message: error.message,
+                type: "error"
+            })
+        }
     }
 
 
@@ -123,6 +160,23 @@ export default function UserSidebar() {
                                     <span style={{ fontSize: 15, textShadow: "0 0 5px black" }}>
                                         Watchlist
                                     </span>
+
+                                    {coins.map(coin => {
+                                        if (watchlist.includes(coin.id))
+                                            return (
+                                                <div className={classes.coin}>
+                                                    <span>{coin.name}</span>
+                                                    <span style={{ display: "flex", gap: 8 }}>{symbol}{numberWithCommas(coin.current_price.toFixed(2))}</span>
+
+                                                    <AiFillDelete
+                                                        style={{ cursor: "pointer" }}
+                                                        fontSize="16"
+                                                        onClick={() => removeFromWatchlist(coin)}
+                                                    />
+                                                </div>
+                                            )
+                                    })}
+
                                 </div>
                             </div>
 
